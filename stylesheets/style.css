@@ -71,7 +71,7 @@ button {  width: auto; overflow: visible; }
 
 body, select, input, textarea { color: #444; }
 h1, h2, h3, h4, h5, h6 { font-weight: bold; }
-a, a:active, a:visited { color: #607890; }
+a, a:active, a:visited { color: #37C; }
 a:hover { color: #036; }
 
 
@@ -205,7 +205,8 @@ a:hover { color: #036; }
 
 
 h1{font: 3.6em/1.2em 'KomikaTextKapsBold', Arial, sans-serif;color:#37C}
-h2{font: 2.5em/1.2em 'KomikaTextTightRegular', Arial, sans-serif;color:#37C}
+h2{font: 2.7em/1.2em 'KomikaTextTightRegular', Arial, sans-serif;color:#37C}
+.ie8 h2, .ie7 h2{font-size:1.9em}
 
 body{background:url(images/background.png);padding:1% 0}
 #container{margin:0 auto;width:1200px;background:#fff;padding:0 10px;-moz-border-radius:15px;border-radius:15px}
@@ -217,9 +218,15 @@ header{text-align:center;padding-top:10px}
 #on_the_road table td{display:table-cell}
 #on_the_road #photos{width:250px;margin:0;display:block}
 #on_the_road #photos li{list-style:none;float:left;margin:0 5px 5px 0}
-#on_the_road #photos li img{border:solid 1px #aaa;width:75px;height:75px;-webkit-box-shadow:1px 1px 1px #aaaaaa;-moz-box-shadow:1px 1px 1px #aaaaaa;box-shadow:1px 1px 1px #aaaaaa}
+#on_the_road #photos li img{width:75px;height:75px;border:solid 1px #37C;-webkit-box-shadow:1px 1px 1px #37C;-moz-box-shadow:1px 1px 1px #37C;box-shadow:1px 1px 1px #37C}
 #on_the_road #map{width:700px;height:595px}
-#twitter{float:left}
+#twitter{float:left;width:234px}
+#twitter ul{margin:0;border:solid 1px #37C;-webkit-box-shadow:1px 1px 1px #37C;-moz-box-shadow:1px 1px 1px #37C;box-shadow:1px 1px 1px #37C}
+#twitter li{list-style:none;margin-bottom:3px;padding:0 2px}
+#twitter span{display:block;text-align:right}
+#sharing{margin:10px 55px}
+#sharing iframe{border:none; overflow:hidden; width:60px; height:65px;float:left}
+#sharing div{float:left}
 
 footer{padding:20px 0;text-align:center}
 footer p{font-size:smaller}
