@@ -1,33 +1,50 @@
-/* Author: 
+/* Author: Mark Holland for IcklePickles.org
 
 */
-
-(function ($, map_id, undefined) {
+(function ($, map_id, flickrApiKey, flickrPhotosetId, undefined) {
+	
+    String.prototype.flickrDate = function () {
+        var year = this.substr(0, 4),
+            month = this.substr(5, 2),
+            day = this.substr(7, 2);
+        return new Date(year, month, day).toDateString();
+    };
 
     var map = (function () {
-
         var pub = {},
-            map, points = [];
+            map = undefined,
+            points = [];
 
         pub.load = function (callback) {
+	
+            if (map) {
+                clearMarkers();
+                callback();
+            }
 
             window.mapLoaded = function () {
-
                 var britain = new google.maps.LatLng(55, -3),
                     mapOpts = {
                         center: britain,
                         zoom: 5,
                         mapTypeId: google.maps.MapTypeId.ROADMAP,
-                        streetViewControl: false
+                        streetViewControl: false,
+                        scrollwheel: false
                     };
-
                 map = new google.maps.Map(document.getElementById(map_id), mapOpts);
-
                 callback();
             };
-
             $.getScript("//maps.google.com/maps/api/js?sensor=false&region=GB&callback=mapLoaded");
         };
+
+        function clearMarkers() {
+            if (points) {
+                $.each(points, function (i, v) {
+                    v.marker.setMap(null);
+                });
+            }
+            points = [];
+        }
 
         pub.plotStart = function () {
             new google.maps.Marker({
@@ -48,10 +65,8 @@
         };
 
         pub.plotPhoto = function (photo) {
-
-            var marker, infoWindow, date = new Date(photo.date_taken),
-                contentTemplate = '<a href="{{LINK}}" target="_blank"><img src="{{SRC}}"></a><p>{{TITLE}}<p>Taken on {{DATE}}</p><p><a href="{{LINK}}" target="_blank">View full size</a></p>',
-                content = contentTemplate.replace(/{{LINK}}/g, photo.link).replace(/{{SRC}}/, photo.fullsize).replace(/{{TITLE}}/g, photo.title).replace(/{{DATE}}/, date.toDateString()),
+            var marker, infoWindow, contentTemplate = '<a href="{{LINK}}" target="_blank"><img src="{{SRC}}" style="height:{{HEIGHT}}px"></a><p>{{TITLE}}<p>Taken on {{DATE}}</p><p><a href="{{LINK}}" target="_blank">View full size</a></p><div><input type="button" class="map_traverse" value="&lt;&lt; Previous" data-index="{{INDEX_PREVIOUS}}"><input type="button" class="map_traverse" value="Next &gt;&gt;" data-index="{{INDEX_NEXT}}"></div>',
+                content = contentTemplate.replace(/{{LINK}}/g, photo.link).replace(/{{SRC}}/, photo.fullsize).replace(/{{HEIGHT}}/, photo.height).replace(/{{TITLE}}/g, photo.title).replace(/{{DATE}}/, photo.dateTaken.flickrDate()).replace(/{{INDEX_PREVIOUS}}/, photo.index - 1).replace(/{{INDEX_NEXT}}/, photo.index + 1),
                 p = {};
 
             marker = new google.maps.Marker({
@@ -84,26 +99,24 @@
         };
 
         function showInfoWindow(p) {
-
-            closeAnyInfoWindows();
+            closeAnyOpenInfoWindows();
             if (p) {
                 var image = new Image();
                 image.onload = function () {
                     p.infoWindow.open(map, p.marker);
-                }
+                };
                 image.src = p.photo;
             }
         }
 
-        function closeAnyInfoWindows() {
-
+        function closeAnyOpenInfoWindows() {
             $.each(points, function (i, v) {
                 v.infoWindow.close();
             });
         }
 
         pub.fitPhotos = function () {
-
+	
             if (points.length === 0) return;
 
             var north = points[0].marker.getPosition().lat(),
@@ -113,19 +126,15 @@
                 southWest, northEast, latLngBounds;
 
             $.each(points, function (i, v) {
-
                 if (v.marker.getPosition().lat() > north) north = v.marker.getPosition().lat();
                 else if (v.marker.getPosition().lat() < south) south = v.marker.getPosition().lat();
-
                 if (v.marker.getPosition().lng() > east) east = v.marker.getPosition().lng();
                 else if (v.marker.getPosition().lng() < west) west = v.marker.getPosition().lng();
-
             });
 
             southWest = new google.maps.LatLng(south, west);
             northEast = new google.maps.LatLng(north, east);
             latLngBounds = new google.maps.LatLngBounds(southWest, northEast);
-
             map.fitBounds(latLngBounds);
         };
 
@@ -133,18 +142,21 @@
     }());
 
     var flickr = (function () {
-
+	
         var pub = {},
-            // flickrFeedUrl = 'http://api.flickr.com/services/feeds/geo/?id=42111033@N06&lang=en-us&format=json&jsoncallback=?',
-            flickrFeedUrl = 'http://api.flickr.com/services/feeds/geo/?id=23666168@N04&lang=en-us&format=json&jsoncallback=?',
             data = {};
 
-        pub.load = function (callback) {
-
-            $.getJSON(flickrFeedUrl, function (d) {
+        pub.load = function (page, callback) {
+            var urlTemplate = 'http://api.flickr.com/services/rest/?method=flickr.photosets.getPhotos&api_key={{API_KEY}}&photoset_id={{PHOTOSET_ID}}&extras=date_taken,geo,url_sq,url_t,url_s&per_page=18&page={{PAGE}}&format=json&jsoncallback=?',
+                url = urlTemplate.replace(/{{API_KEY}}/, flickrApiKey).replace(/{{PHOTOSET_ID}}/, flickrPhotosetId).replace(/{{PAGE}}/, page);
+            $.getJSON(url, function (d) {
                 data = d;
                 callback();
             });
+        };
+
+        pub.isOk = function () {
+            return data && data.stat === 'ok';
         };
 
         pub.log = function () {
@@ -152,69 +164,115 @@
         };
 
         pub.renderImageMatrix = function ($target) {
-
             var itemTemplate = '<li data-index="{{INDEX}}"><img src="{{SRC}}"></li>',
-                render = $.map(data.items, function (element, i) {
-                    return itemTemplate.replace(/{{SRC}}/, element.media.m.replace(/_m.jpg/, '_s.jpg')).replace(/{{INDEX}}/, i);
+                render = $.map(data.photoset.photo, function (element, i) {
+                    return itemTemplate.replace(/{{SRC}}/, element.url_sq).replace(/{{INDEX}}/, i);
                 }).join('');
-
-            $target.append(render);
+            $target.empty().append(render);
         };
 
         pub.photoIterator = function (callback) {
-
-            var latLongOfLast;
-
-            $.each(data.items, function (i, v) {
+            var linkTemplate = 'http://www.flickr.com/photos/{{USER_ID}}/{{PHOTO_ID}}';
+            $.each(data.photoset.photo, function (i, v) {
                 callback({
-                    thumbnail: v.media.m.replace(/_m.jpg/, '_s.jpg'),
-                    fullsize: v.media.m,
-                    link: v.link,
+                    thumbnail: v.url_t,
+                    fullsize: v.url_s,
+                    height: v.height_s,
+                    link: linkTemplate.replace(/{{USER_ID}}/, data.photoset.owner).replace(/{{PHOTO_ID}}/, v.id),
                     title: v.title,
-                    date_taken: v.date_taken,
+                    dateTaken: v.datetaken,
                     latitude: v.latitude,
                     longitude: v.longitude,
                     index: i
                 });
-
-                latLongOfLast = {
-                    latitude: v.latitude,
-                    longitude: v.longitude
-                };
             });
+        };
 
-            return latLongOfLast;
+        pub.setPageXofY = function ($target) {
+            var pagingTemplate = "Page {{X}} of {{Y}}",
+                paging = pagingTemplate.replace(/{{X}}/, data.photoset.page).replace(/{{Y}}/, data.photoset.pages);
+            $target.html(paging);
+        };
+
+        pub.getPreviousPageIndex = function () {
+            var p = Number(data.photoset.page);
+            if (!isNaN(p)) {
+                p = p - 1;
+                if (p >= 0) {
+                    return p;
+                }
+            }
+            return undefined;
+        };
+
+        pub.getNextPageIndex = function () {
+            var p = Number(data.photoset.page);
+            if (!isNaN(p)) {
+                p = p + 1;
+                if (p <= data.photoset.pages) {
+                    return p;
+                }
+            }
+            return undefined;
         };
 
         return pub;
+
     }());
+    var loadPhotos = function (page) {
+	
+    	var $photos = $('#photos');
+        $photos.empty().append(
+        $('<img>', {
+            src: 'images/ajax-loader.gif',
+            height: '48px',
+            width: '48px'
+        }));
 
-    flickr.load(function () {
-        flickr.renderImageMatrix($('#photos'));
-        map.load(function () {
-            map.plotStart();
-            map.plotEnd();
-            flickr.photoIterator(map.plotPhoto);
-            map.fitPhotos();
-
-            $('#photos').find('li').click(function (e) {
-
-                e.preventDefault();
-                map.showInfoWindow($(this).data('index'));
-
-            }).css('cursor', 'pointer');
+        flickr.load(page || 1, function () {
+            if (flickr.isOk()) {
+                flickr.renderImageMatrix($photos);
+                flickr.setPageXofY($('#pages'));
+                map.load(function () {
+                    map.plotStart();
+                    map.plotEnd();
+                    flickr.photoIterator(map.plotPhoto);
+                    map.fitPhotos();
+                });
+            }
         });
+    };
+
+    $('#paging .previous').click(function (e) {
+        e.preventDefault();
+        var previousPage = flickr.getPreviousPageIndex();
+        if (previousPage) {
+            loadPhotos(previousPage);
+        }
     });
 
+    $('#paging .next').click(function (e) {
+        e.preventDefault();
+        var nextPage = flickr.getNextPageIndex();
+        if (nextPage) {
+            loadPhotos(nextPage);
+        }
+    });
+
+    $('#photos li, input.map_traverse').live('click', function (e) {
+        map.showInfoWindow($(this).data('index'));
+        return false;
+    });
+
+    loadPhotos();
 
     var twitter = (function () {
         var pub = {},
             data = [],
-            tweets_to_pull = 6,
+            tweets_to_pull = 5,
             timeline = 'http://twitter.com/statuses/user_timeline/icklepickles.json';
 
         pub.load = function (callback) {
-
             $.get(timeline, {
                 count: tweets_to_pull
             }, function (d) {
@@ -224,12 +282,10 @@
         };
 
         pub.renderTweets = function ($target) {
-
             var tweetTemplate = '<li>{{BODY}}<span><a href="{{LINK}}">{{POSTED}}</a></span></li>',
                 render = $.map(data, function (tweet) {
                     return tweetTemplate.replace(/{{BODY}}/, extractStatus(tweet)).replace(/{{LINK}}/, extractStatusUrl(tweet)).replace(/{{POSTED}}/, extractTime(tweet));
                 }).join('');
-
             $target.append(render);
         };
 
@@ -262,14 +318,12 @@
         }
 
         function toRelativeTime(time_value) {
-
             var values = time_value.split(" ");
             time_value = values[1] + " " + values[2] + ", " + values[5] + " " + values[3];
             var parsed_date = Date.parse(time_value);
             var relative_to = (arguments.length > 1) ? arguments[1] : new Date();
             var delta = parseInt((relative_to.getTime() - parsed_date) / 1000);
             delta = delta + (relative_to.getTimezoneOffset() * 60);
-
             if (delta < 60) {
                 return 'less than a minute ago';
             } else if (delta < 120) {
@@ -288,10 +342,11 @@
         }
 
         return pub;
+
     }());
 
     twitter.load(function () {
-        twitter.renderTweets($('#twitter ul'));
+        twitter.renderTweets($('#twitter'));
     });
 
-}(jQuery, 'map'));
+}(jQuery, 'map', 'e224418b91b4af4e8cdb0564716fa9bd', '72157622281636623'));
