@@ -2,7 +2,7 @@
 
 */
 (function ($, map_id, flickrApiKey, flickrPhotosetId, undefined) {
-	
+
     String.prototype.flickrDate = function () {
         var year = this.substr(0, 4),
             month = this.substr(5, 2),
@@ -11,7 +11,7 @@
     };
 
     function showLoader($target) {
-       $target.empty().append(
+        $target.empty().append(
         $('<img>', {
             src: 'images/ajax-loader.gif',
             height: '48px',
@@ -25,7 +25,7 @@
             points = [];
 
         pub.load = function (callback) {
-	
+
             if (map) {
                 clearMarkers();
                 callback();
@@ -125,7 +125,7 @@
         }
 
         pub.fitPhotos = function () {
-	
+
             if (points.length === 0) return;
 
             var north = points[0].marker.getPosition().lat(),
@@ -151,7 +151,7 @@
     }());
 
     var flickr = (function () {
-	
+
         var pub = {},
             data = {};
 
@@ -230,23 +230,23 @@
     }());
 
     var loadPhotos = function (page) {
-	
-    	var $photos = $('#photos');
-        showLoader($photos);
-     
-        flickr.load(page || 1, function () {
-            if (flickr.isOk()) {
-                flickr.render($photos);
-                flickr.setPageXofY($('#pages'));
-                map.load(function () {
-                    map.plotStart();
-                    map.plotEnd();
-                    flickr.photoIterator(map.plotPhoto);
-                    map.fitPhotos();
-                });
-            }
-        });
-    };
+
+            var $photos = $('#photos');
+            showLoader($photos);
+
+            flickr.load(page || 1, function () {
+                if (flickr.isOk()) {
+                    flickr.render($photos);
+                    flickr.setPageXofY($('#pages'));
+                    map.load(function () {
+                        map.plotStart();
+                        map.plotEnd();
+                        flickr.photoIterator(map.plotPhoto);
+                        map.fitPhotos();
+                    });
+                }
+            });
+        };
 
     $('#paging .previous').click(function (e) {
         e.preventDefault();
@@ -351,7 +351,7 @@
 
     }());
 
-    (function(){
+    (function () {
         var $twitter = $('#twitter');
         showLoader($twitter);
         twitter.load(function () {
@@ -360,3 +360,19 @@
     }());
 
 }(jQuery, 'map', 'e224418b91b4af4e8cdb0564716fa9bd', '72157622281636623'));
+
+(function ($) {
+
+    var $tellMeMore = $('#tell_me_more');
+
+    $('header a').click(function(e) {
+        e.preventDefault();
+        $tellMeMore.slideToggle();
+    });
+
+    $tellMeMore.find('input').click(function(e) {
+        e.preventDefault();
+        $tellMeMore.slideUp();
+    });
+
+}(jQuery));
