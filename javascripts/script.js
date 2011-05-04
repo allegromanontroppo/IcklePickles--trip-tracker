@@ -10,6 +10,15 @@
         return new Date(year, month, day).toDateString();
     };
 
+    function showLoader($target) {
+       $target.empty().append(
+        $('<img>', {
+            src: 'images/ajax-loader.gif',
+            height: '48px',
+            width: '48px'
+        }));
+    }
+
     var map = (function () {
         var pub = {},
             map = undefined,
@@ -163,7 +172,7 @@
             console.log(data);
         };
 
-        pub.renderImageMatrix = function ($target) {
+        pub.render = function ($target) {
             var itemTemplate = '<li data-index="{{INDEX}}"><img src="{{SRC}}"></li>',
                 render = $.map(data.photoset.photo, function (element, i) {
                     return itemTemplate.replace(/{{SRC}}/, element.url_sq).replace(/{{INDEX}}/, i);
@@ -219,19 +228,15 @@
         return pub;
 
     }());
+
     var loadPhotos = function (page) {
 	
     	var $photos = $('#photos');
-        $photos.empty().append(
-        $('<img>', {
-            src: 'images/ajax-loader.gif',
-            height: '48px',
-            width: '48px'
-        }));
-
+        showLoader($photos);
+     
         flickr.load(page || 1, function () {
             if (flickr.isOk()) {
-                flickr.renderImageMatrix($photos);
+                flickr.render($photos);
                 flickr.setPageXofY($('#pages'));
                 map.load(function () {
                     map.plotStart();
@@ -267,6 +272,7 @@
     loadPhotos();
 
     var twitter = (function () {
+
         var pub = {},
             data = [],
             tweets_to_pull = 5,
@@ -281,12 +287,12 @@
             }, 'jsonp');
         };
 
-        pub.renderTweets = function ($target) {
-            var tweetTemplate = '<li>{{BODY}}<span><a href="{{LINK}}">{{POSTED}}</a></span></li>',
+        pub.render = function ($target) {
+            var tweetTemplate = '<li>{{BODY}}<span><a href="{{LINK}}" target="_blank">{{POSTED}}</a></span></li>',
                 render = $.map(data, function (tweet) {
                     return tweetTemplate.replace(/{{BODY}}/, extractStatus(tweet)).replace(/{{LINK}}/, extractStatusUrl(tweet)).replace(/{{POSTED}}/, extractTime(tweet));
                 }).join('');
-            $target.append(render);
+            $target.empty().append(render);
         };
 
         pub.log = function () {
@@ -345,8 +351,12 @@
 
     }());
 
-    twitter.load(function () {
-        twitter.renderTweets($('#twitter'));
-    });
+    (function(){
+        var $twitter = $('#twitter');
+        showLoader($twitter);
+        twitter.load(function () {
+            twitter.render($twitter);
+        });
+    }());
 
 }(jQuery, 'map', 'e224418b91b4af4e8cdb0564716fa9bd', '72157622281636623'));
