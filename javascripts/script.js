@@ -365,7 +365,7 @@
 
     var $tellMeMore = $('#tell_me_more');
 
-    $('header a').click(function(e) {
+    $('#tell_me_more_trigger').click(function(e) {
         e.preventDefault();
         $tellMeMore.slideToggle();
     });
