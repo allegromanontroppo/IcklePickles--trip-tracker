@@ -82,7 +82,7 @@
                 map: map,
                 position: new google.maps.LatLng(photo.latitude, photo.longitude),
                 icon: photo.thumbnail,
-                shadow: 'images/shadow.png',
+                shadow: 'images/shadow.png'
             });
 
             infoWindow = new google.maps.InfoWindow({
