@@ -1,7 +1,115 @@
 /* Author: Mark Holland for IcklePickles.org
 
 */
+
+if (typeof window.localStorage == 'undefined' || typeof window.sessionStorage == 'undefined')(function () {
+
+    var Storage = function (type) {
+            function createCookie(name, value, days) {
+                var date, expires;
+
+                if (days) {
+                    date = new Date();
+                    date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+                    expires = "; expires=" + date.toGMTString();
+                } else {
+                    expires = "";
+                }
+                document.cookie = name + "=" + value + expires + "; path=/";
+            }
+
+            function readCookie(name) {
+                var nameEQ = name + "=",
+                    ca = document.cookie.split(';'),
+                    i, c;
+
+                for (i = 0; i < ca.length; i++) {
+                    c = ca[i];
+                    while (c.charAt(0) == ' ') {
+                        c = c.substring(1, c.length);
+                    }
+
+                    if (c.indexOf(nameEQ) == 0) {
+                        return c.substring(nameEQ.length, c.length);
+                    }
+                }
+                return null;
+            }
+
+            function setData(data) {
+                data = JSON.stringify(data);
+                if (type == 'session') {
+                    window.name = data;
+                } else {
+                    createCookie('localStorage', data, 365);
+                }
+            }
+
+            function clearData() {
+                if (type == 'session') {
+                    window.name = '';
+                } else {
+                    createCookie('localStorage', '', 365);
+                }
+            }
+
+            function getData() {
+                var data = type == 'session' ? window.name : readCookie('localStorage');
+                return data ? JSON.parse(data) : {};
+            }
+
+
+            // initialise if there's already data
+            var data = getData();
+
+            return {
+                length: 0,
+                clear: function () {
+                    data = {};
+                    this.length = 0;
+                    clearData();
+                },
+                getItem: function (key) {
+                    return data[key] === undefined ? null : data[key];
+                },
+                key: function (i) {
+                    // not perfect, but works
+                    var ctr = 0;
+                    for (var k in data) {
+                        if (ctr == i) return k;
+                        else ctr++;
+                    }
+                    return null;
+                },
+                removeItem: function (key) {
+                    delete data[key];
+                    this.length--;
+                    setData(data);
+                },
+                setItem: function (key, value) {
+                    data[key] = value + ''; // forces the value to a string
+                    this.length++;
+                    setData(data);
+                }
+            };
+        };
+
+    if (typeof window.localStorage == 'undefined') window.localStorage = new Storage('local');
+    if (typeof window.sessionStorage == 'undefined') window.sessionStorage = new Storage('session');
+
+})();
+
 (function ($, map_id, flickrApiKey, flickrPhotosetId, undefined) {
+
+    function shimJSON(callback) {
+        if (window.JSON) {
+            callback();
+        } else {
+            $.getScript('javascripts/libs/json2.js', function () {
+                callback();
+            });
+        }
+    }
 
     String.prototype.flickrDate = function () {
         var year = this.substr(0, 4),
@@ -155,10 +263,31 @@
         var pub = {},
             data = {};
 
-        pub.load = function (page, callback) {
-            var urlTemplate = 'http://api.flickr.com/services/rest/?method=flickr.photosets.getPhotos&api_key={{API_KEY}}&photoset_id={{PHOTOSET_ID}}&extras=date_taken,geo,url_sq,url_t,url_s&per_page=18&page={{PAGE}}&format=json&jsoncallback=?',
-                url = urlTemplate.replace(/{{API_KEY}}/, flickrApiKey).replace(/{{PHOTOSET_ID}}/, flickrPhotosetId).replace(/{{PAGE}}/, page);
-            $.getJSON(url, function (d) {
+        pub.getPageData = function (page, callback) {
+
+            shimJSON(function () {
+
+                var key = 'FLICKR_{{PAGE}}'.replace(/{{PAGE}}/, page),
+                    d = window.sessionStorage.getItem(key);
+
+                if (d && callback) {
+                    callback(JSON.parse(d));
+                }
+
+                var urlTemplate = 'http://api.flickr.com/services/rest/?method=flickr.photosets.getPhotos&api_key={{API_KEY}}&photoset_id={{PHOTOSET_ID}}&extras=date_taken,geo,url_sq,url_t,url_s&per_page=18&page={{PAGE}}&format=json&jsoncallback=?',
+                    url = urlTemplate.replace(/{{API_KEY}}/, flickrApiKey).replace(/{{PHOTOSET_ID}}/, flickrPhotosetId).replace(/{{PAGE}}/, page);
+
+                $.getJSON(url, function (d) {
+                    window.sessionStorage.setItem(key, JSON.stringify(d));
+                    if (callback) {
+                        callback(d);
+                    }
+                });
+            });
+        }
+
+        pub.loadPage = function (page, callback) {
+            pub.getPageData(page, function (d) {
                 data = d;
                 callback();
             });
@@ -234,7 +363,7 @@
             var $photos = $('#photos');
             showLoader($photos);
 
-            flickr.load(page || 1, function () {
+            flickr.loadPage(page || 1, function () {
                 if (flickr.isOk()) {
                     flickr.render($photos);
                     flickr.setPageXofY($('#pages'));
@@ -244,6 +373,11 @@
                         flickr.photoIterator(map.plotPhoto);
                         map.fitPhotos();
                     });
+                }
+
+                var nextPage = flickr.getNextPageIndex();
+                if (nextPage) {
+                    flickr.getPageData(nextPage);
                 }
             });
         };
@@ -365,12 +499,12 @@
 
     var $tellMeMore = $('#tell_me_more');
 
-    $('#tell_me_more_trigger').click(function(e) {
+    $('#tell_me_more_trigger').click(function (e) {
         e.preventDefault();
         $tellMeMore.slideToggle();
     });
 
-    $tellMeMore.find('input').click(function(e) {
+    $tellMeMore.find('input').click(function (e) {
         e.preventDefault();
         $tellMeMore.slideUp();
     });
