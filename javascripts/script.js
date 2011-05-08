@@ -112,10 +112,11 @@ if (typeof window.localStorage == 'undefined' || typeof window.sessionStorage ==
     }
 
     String.prototype.flickrDate = function () {
+		
         var year = this.substr(0, 4),
             month = this.substr(5, 2),
-            day = this.substr(7, 2);
-        return new Date(year, month, day).toDateString();
+            day = this.substr(8, 2);
+        return new Date(year, month - 1, day).toDateString();
     };
 
     function showLoader($target) {
@@ -137,6 +138,7 @@ if (typeof window.localStorage == 'undefined' || typeof window.sessionStorage ==
             if (map) {
                 clearMarkers();
                 callback();
+				return;
             }
 
             window.mapLoaded = function () {
@@ -182,6 +184,7 @@ if (typeof window.localStorage == 'undefined' || typeof window.sessionStorage ==
         };
 
         pub.plotPhoto = function (photo) {
+	
             var marker, infoWindow, contentTemplate = '<a href="{{LINK}}" target="_blank" style="display:block"><img src="{{SRC}}" style="height:{{HEIGHT}}px;max-height:190px"></a><p>{{TITLE}}<p>Taken on {{DATE}}</p><p><a href="{{LINK}}" target="_blank">View full size</a></p><p><input type="button" class="map_traverse" value="&lt;&lt; Previous" data-index="{{INDEX_PREVIOUS}}"><input type="button" class="map_traverse" value="Next &gt;&gt;" data-index="{{INDEX_NEXT}}"></p>',
                 content = contentTemplate.replace(/{{LINK}}/g, photo.link).replace(/{{SRC}}/, photo.fullsize).replace(/{{HEIGHT}}/g, photo.height).replace(/{{TITLE}}/g, photo.title).replace(/{{DATE}}/, photo.dateTaken.flickrDate()).replace(/{{INDEX_PREVIOUS}}/, photo.index - 1).replace(/{{INDEX_NEXT}}/, photo.index + 1),
                 p = {};
@@ -272,6 +275,7 @@ if (typeof window.localStorage == 'undefined' || typeof window.sessionStorage ==
 
                 if (d && callback) {
                     callback(JSON.parse(d));
+					return;
                 }
 
                 var urlTemplate = 'http://api.flickr.com/services/rest/?method=flickr.photosets.getPhotos&api_key={{API_KEY}}&photoset_id={{PHOTOSET_ID}}&extras=date_taken,geo,url_sq,url_t,url_s&per_page=18&page={{PAGE}}&format=json&jsoncallback=?',
@@ -367,7 +371,7 @@ if (typeof window.localStorage == 'undefined' || typeof window.sessionStorage ==
                 if (flickr.isOk()) {
                     flickr.render($photos);
                     flickr.setPageXofY($('#pages'));
-                    map.load(function () {
+                    map.load(function () {				
                         map.plotStart();
                         map.plotEnd();
                         flickr.photoIterator(map.plotPhoto);
