@@ -213,9 +213,43 @@ if (typeof window.localStorage == 'undefined' || typeof window.sessionStorage ==
 
             points.push(p);
         };
+		
+		pub.showInfoWindowStatus = {
+				SUCCESS : 0,
+				INDEX_TOO_LOW: 1,
+				INDEX_TOO_HIGH: 2
+		};
+		
+		pub.showInfoWindowValue = {
+				FIRST : -100,
+				LAST: -200
+		};
 
         pub.showInfoWindow = function (index) {
+	
+			var pointsLength = points.length;
+					
+			switch(index) {
+				case pub.showInfoWindowValue.FIRST:
+					index = 0;
+					break;
+				
+				case pub.showInfoWindowValue.LAST:
+					index = pointsLength - 1;
+					break;
+			}
+				
+			if(index < 0) {
+				return pub.showInfoWindowStatus.INDEX_TOO_LOW;
+			}
+			
+			if(index >= pointsLength) {
+				return pub.showInfoWindowStatus.INDEX_TOO_HIGH;
+			}
+	
             showInfoWindow(points[index]);
+
+			return pub.showInfoWindowStatus.SUCCESS;
         };
 
         function showInfoWindow(p) {
@@ -224,6 +258,7 @@ if (typeof window.localStorage == 'undefined' || typeof window.sessionStorage ==
                 var image = new Image();
                 image.onload = function () {
                     p.infoWindow.open(map, p.marker);
+					map.setZoom(11);
                 };
                 image.src = p.photo;
             }
@@ -362,49 +397,79 @@ if (typeof window.localStorage == 'undefined' || typeof window.sessionStorage ==
 
     }());
 
-    var loadPhotos = function (page) {
+    var loadPhotos = function (page, callback) {
 
-            var $photos = $('#photos');
-            showLoader($photos);
+         var $photos = $('#photos');
+         showLoader($photos);
 
-            flickr.loadPage(page || 1, function () {
-                if (flickr.isOk()) {
-                    flickr.render($photos);
-                    flickr.setPageXofY($('#pages'));
-                    map.load(function () {				
-                        map.plotStart();
-                        map.plotEnd();
-                        flickr.photoIterator(map.plotPhoto);
-                        map.fitPhotos();
-                    });
-                }
+         flickr.loadPage(page || 1, function () {
+             if (flickr.isOk()) {
+                 flickr.render($photos);
+                 flickr.setPageXofY($('#pages'));
+                 map.load(function () {				
+                     map.plotStart();
+                     map.plotEnd();
+                     flickr.photoIterator(map.plotPhoto);
+                     map.fitPhotos();
 
-                var nextPage = flickr.getNextPageIndex();
-                if (nextPage) {
-                    flickr.getPageData(nextPage);
-                }
-            });
-        };
+					if(callback) {
+						callback();
+					}
+                 });
+             }
+
+             var nextPage = flickr.getNextPageIndex();
+             if (nextPage) {
+                 flickr.getPageData(nextPage);
+             }
+         });
+     };
+
+	function loadPreviousPage(openLastInfoWindow) {		
+	     var previousPage = flickr.getPreviousPageIndex();
+	     if (previousPage) {
+	         loadPhotos(previousPage, function() {
+				if(openLastInfoWindow) {
+					map.showInfoWindow(map.showInfoWindowValue.LAST);	
+				}	
+			});	
+	     }
+	}
+	
+	function loadNextPage(openFirstInfoWindow) {		
+	       var nextPage = flickr.getNextPageIndex();
+	       if (nextPage) {
+	           loadPhotos(nextPage, function() {
+				if(openFirstInfoWindow) {
+					map.showInfoWindow(map.showInfoWindowValue.FIRST);
+				}
+			});
+	     }
+	}
 
     $('#paging .previous').click(function (e) {
         e.preventDefault();
-        var previousPage = flickr.getPreviousPageIndex();
-        if (previousPage) {
-            loadPhotos(previousPage);
-        }
+		loadPreviousPage();
     });
 
     $('#paging .next').click(function (e) {
         e.preventDefault();
-        var nextPage = flickr.getNextPageIndex();
-        if (nextPage) {
-            loadPhotos(nextPage);
-        }
+		loadNextPage();
     });
 
     $('#photos li, input.map_traverse').live('click', function (e) {
-        map.showInfoWindow($(this).data('index'));
-        return false;
+		e.preventDefault();
+        var showInfoWindowStatus = map.showInfoWindow($(this).data('index'));
+		switch(showInfoWindowStatus)
+		{		
+			case map.showInfoWindowStatus.INDEX_TOO_LOW:	
+				loadPreviousPage(true);			
+				break;
+		
+			case map.showInfoWindowStatus.INDEX_TOO_HIGH:	
+				loadNextPage(true);			
+				break;
+		}
     });
 
     loadPhotos();
