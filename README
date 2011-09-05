@@ -1,0 +1,7 @@
+This is a single page app which pulls in photos from Flickr and plots them on a Googlemap.
+
+Clicking the thumbnail shows a larger image with some further details and a link to the main Flickr photo. 
+
+Here's the JS file which is the nub of the site: https://github.com/allegromanontroppo/IcklePickles--trip-tracker/blob/master/javascripts/script.js I'm really pleased how segregated all the functionality is. The photo data loading side is all encapsulated, as is the HTML rendering and the jQuery interactions are all separate too. The Twitter loader is off doing its own thing as well. 
+
+Confession, for some reason the font-face doesn't work in Firefox. Not sure why. Dodgy font file possibly.
